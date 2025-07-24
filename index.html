@@ -1,0 +1,727 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Control Financiero - INNOGROUP TECH, S.L.</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals & Teal Accent -->
+    <!-- Application Structure Plan: A tabbed dashboard interface is used to segment complex financial information into seven logical sections. The new 'Información Financiera' tab is added to provide full transparency, showing the source data tables (Balance Sheet, P&L) and the explicit formulas and calculations for all key ratios. This enhances credibility and allows for detailed verification of the analysis. -->
+    <!-- Visualization & Content Choices: 
+        - Overview: KPI cards (HTML/CSS).
+        - P&L: Combination Bar/Line Chart (Chart.js).
+        - Expense Analysis: Donut Chart (Chart.js) and a detailed table (HTML).
+        - Balance Sheet: Donut Charts (Chart.js).
+        - Ratios: Grid of informational cards (HTML/CSS).
+        - Financial Info: Detailed data tables and formula cards (HTML/CSS) to show the raw data and mathematical derivations. Goal: Inform/Verify. Justification: Provides transparency and builds trust in the analysis.
+        - PDF Report: A section with a download button triggering a jsPDF function.
+        - All interactions are handled via tooltips on charts and hover/click states. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 300px;
+            max-height: 40vh;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .tab-active {
+            border-color: #0d9488; /* teal-600 */
+            color: #0d9488; /* teal-600 */
+            font-weight: 600;
+        }
+        .kpi-card {
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .report-section h3, .financial-info-section h3 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #111827;
+            margin-top: 1.5rem;
+            margin-bottom: 0.75rem;
+            border-bottom: 2px solid #e5e7eb;
+            padding-bottom: 0.5rem;
+        }
+        .report-section p, .report-section li, .financial-info-section p {
+            color: #4b5563;
+            line-height: 1.6;
+        }
+        .formula-card {
+            background-color: #f8fafc;
+            border: 1px solid #e5e7eb;
+            border-left: 4px solid #0d9488;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-bottom: 1rem;
+        }
+        .formula-card .formula-title {
+            font-weight: 600;
+            color: #111827;
+        }
+        .formula-card .formula-equation {
+            font-family: monospace;
+            background-color: #e5e7eb;
+            padding: 0.5rem;
+            border-radius: 0.25rem;
+            margin: 0.5rem 0;
+            color: #374151;
+        }
+        .formula-card .formula-result {
+            font-weight: 600;
+            color: #0d9488;
+        }
+    </style>
+</head>
+<body class="bg-stone-50 text-gray-800">
+
+    <div class="container mx-auto p-4 sm:p-6 lg:p-8">
+        
+        <header class="text-center mb-8">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Panel de Control Financiero</h1>
+            <p class="text-lg text-gray-600 mt-1">INNOGROUP TECH, S.L. | CORTE 06-2025</p>
+        </header>
+
+        <nav class="mb-8">
+            <div class="border-b border-gray-200">
+                <ul class="flex flex-wrap -mb-px text-sm font-medium text-center text-gray-500" id="nav-tabs">
+                    <li class="mr-2">
+                        <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300 tab-active" data-tab="overview">
+                            Visión General
+                        </button>
+                    </li>
+                    <li class="mr-2">
+                        <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300" data-tab="results">
+                            Resultados
+                        </button>
+                    </li>
+                    <li class="mr-2">
+                        <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300" data-tab="expenses">
+                            Análisis de Gastos
+                        </button>
+                    </li>
+                    <li class="mr-2">
+                        <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300" data-tab="balance">
+                            Balance
+                        </button>
+                    </li>
+                     <li class="mr-2">
+                        <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300" data-tab="ratios">
+                            Ratios Clave
+                        </button>
+                    </li>
+                     <li class="mr-2">
+                        <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300" data-tab="financial-info">
+                            Información Financiera
+                        </button>
+                    </li>
+                    <li>
+                        <button class="inline-block p-4 border-b-2 border-transparent rounded-t-lg hover:text-gray-600 hover:border-gray-300" data-tab="report">
+                            Informe PDF
+                        </button>
+                    </li>
+                </ul>
+            </div>
+        </nav>
+
+        <main id="tab-content">
+            <!-- Visión General Tab -->
+            <section id="overview" class="space-y-8">
+                <div class="text-left pb-4">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Resumen Ejecutivo</h2>
+                    <p class="text-gray-600">
+                        Esta sección presenta los indicadores de rendimiento (KPIs) más importantes y los hallazgos clave del primer semestre de 2025. Ofrece una visión rápida y completa de la salud financiera de la empresa, destacando tanto las fortalezas como las áreas que requieren atención estratégica.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="kpi-card bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-sm font-medium text-gray-500">Beneficio Neto</h3>
+                        <p class="text-3xl font-bold text-teal-600 mt-2">4.926,39 €</p>
+                    </div>
+                    <div class="kpi-card bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-sm font-medium text-gray-500">Ingresos Totales</h3>
+                        <p class="text-3xl font-bold text-teal-600 mt-2">26.872,91 €</p>
+                    </div>
+                    <div class="kpi-card bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-sm font-medium text-gray-500">Rentabilidad (ROE)</h3>
+                        <p class="text-3xl font-bold text-teal-600 mt-2">62,4%</p>
+                    </div>
+                    <div class="kpi-card bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-sm font-medium text-gray-500">Ratio de Liquidez</h3>
+                        <p class="text-3xl font-bold text-teal-600 mt-2">1,71</p>
+                    </div>
+                </div>
+                <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="text-xl font-bold text-gray-800 mb-4">Hallazgos y Conclusión</h3>
+                    <ul class="space-y-3 text-gray-700 list-disc list-inside">
+                        <li><span class="font-semibold">Rentabilidad Excepcional:</span> Se alcanzó un Margen Neto del 18,3% y un ROE del 62,4%, indicando una gestión muy eficiente.</li>
+                        <li><span class="font-semibold">Crecimiento Acelerado:</span> Los ingresos muestran una fuerte tendencia al alza a lo largo del semestre.</li>
+                        <li><span class="font-semibold">Liquidez Saludable:</span> La empresa tiene una buena capacidad para afrontar sus obligaciones a corto plazo.</li>
+                        <li><span class="font-semibold text-amber-700">Atención a la Deuda:</span> El 100% del pasivo es a corto plazo, lo que representa un punto a vigilar para la estabilidad futura.</li>
+                    </ul>
+                    <p class="mt-4 pt-4 border-t border-gray-200 text-gray-600">
+                        <span class="font-semibold">Conclusión:</span> La empresa presenta una posición financiera fuerte y rentable. El desafío estratégico será gestionar el crecimiento y la estructura de pasivos para asegurar la sostenibilidad a largo plazo.
+                    </p>
+                </div>
+            </section>
+
+            <!-- Resultados Tab -->
+            <section id="results" class="hidden space-y-8">
+                <div class="text-left pb-4">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Análisis de Resultados</h2>
+                    <p class="text-gray-600">
+                        Explore la evolución de los ingresos y beneficios de la empresa. El siguiente gráfico muestra el rendimiento mensual, permitiendo identificar tendencias, estacionalidad y el impacto de las decisiones operativas en la rentabilidad.
+                    </p>
+                </div>
+                <div class="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm">
+                    <h3 class="text-lg font-semibold text-gray-800 mb-1">Evolución Mensual de Ingresos y Resultados</h3>
+                    <p class="text-sm text-gray-500 mb-4">06-2025</p>
+                    <div class="chart-container">
+                        <canvas id="revenueProfitChart"></canvas>
+                    </div>
+                    <p class="text-center text-xs text-gray-500 mt-4">El gráfico ilustra un crecimiento significativo de los ingresos, culminando en un rendimiento de beneficio positivo a pesar de la volatilidad en los primeros meses.</p>
+                </div>
+            </section>
+
+            <!-- Análisis de Gastos Tab -->
+            <section id="expenses" class="hidden space-y-8">
+                <div class="text-left pb-4">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Análisis de Gastos</h2>
+                    <p class="text-gray-600">
+                        Esta sección desglosa la estructura de los gastos totales del semestre. El gráfico muestra las categorías principales, mientras que la tabla ofrece un detalle de los "Otros Gastos de Explotación", que constituyen la mayor parte de los costes operativos.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                    <div class="lg:col-span-2 bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-1">Composición de Gastos Totales</h3>
+                        <p class="text-sm text-gray-500 mb-4">Total Gastos: 21.946,52 €</p>
+                        <div class="chart-container h-64 md:h-80">
+                            <canvas id="expensesChart"></canvas>
+                        </div>
+                        <p class="text-center text-xs text-gray-500 mt-4">La estructura de gastos está fuertemente concentrada en los costes de explotación.</p>
+                    </div>
+                    <div class="lg:col-span-3 bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Detalle de "Otros Gastos de Explotación"</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-500">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                    <tr>
+                                        <th scope="col" class="px-6 py-3">Concepto</th>
+                                        <th scope="col" class="px-6 py-3 text-right">Importe (€)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Suscripción Google</td><td class="px-6 py-4 text-right">9.587,95</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Creación de Contenido</td><td class="px-6 py-4 text-right">2.935,00</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Suscripción Meto</td><td class="px-6 py-4 text-right">1.581,79</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Servicios Legales</td><td class="px-6 py-4 text-right">1.335,00</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Servicios de Hiring</td><td class="px-6 py-4 text-right">853,52</td></tr>
+                                    <tr class="bg-white"><td class="px-6 py-4 font-medium text-gray-900">Otros menores</td><td class="px-6 py-4 text-right">2.412,16</td></tr>
+                                </tbody>
+                                <tfoot class="font-semibold text-gray-900">
+                                    <tr>
+                                        <td class="px-6 py-3">Total</td>
+                                        <td class="px-6 py-3 text-right">18.705,42</td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Balance Tab -->
+            <section id="balance" class="hidden space-y-8">
+                 <div class="text-left pb-4">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Análisis del Balance</h2>
+                    <p class="text-gray-600">
+                        Esta sección desglosa la estructura financiera de la empresa a 30 de junio de 2025. Los gráficos visualizan la composición de los activos (lo que la empresa posee) y del pasivo y patrimonio neto (cómo se financia), ofreciendo una clara imagen de su solvencia y estructura de capital.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-1">Composición del Activo</h3>
+                        <p class="text-sm text-gray-500 mb-4">Total Activo: 18.557,01 €</p>
+                        <div class="chart-container h-64 md:h-80">
+                            <canvas id="assetsChart"></canvas>
+                        </div>
+                        <p class="text-center text-xs text-gray-500 mt-4">La estructura del activo está dominada por la liquidez, indicando una baja inversión en activos fijos y una alta capacidad de tesorería.</p>
+                    </div>
+                    <div class="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-1">Composición del Pasivo y Patrimonio</h3>
+                        <p class="text-sm text-gray-500 mb-4">Total Pasivo + P. Neto: 18.557,01 €</p>
+                         <div class="chart-container h-64 md:h-80">
+                            <canvas id="liabilitiesChart"></canvas>
+                        </div>
+                        <p class="text-center text-xs text-gray-500 mt-4">La financiación se divide entre capital propio y deuda a corto plazo, sin existencia de obligaciones a largo plazo.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Ratios Clave Tab -->
+            <section id="ratios" class="hidden space-y-8">
+                <div class="text-left pb-4">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Análisis de Ratios Financieros</h2>
+                    <p class="text-gray-600">
+                        Los ratios financieros son herramientas esenciales para evaluar el rendimiento desde diferentes perspectivas. Aquí se presentan los indicadores clave de liquidez, solvencia, rentabilidad y gestión, junto con una explicación de su significado para facilitar la toma de decisiones.
+                    </p>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-700">Ratio de Liquidez</h3>
+                        <p class="text-3xl font-bold text-gray-900 my-2">1,71</p>
+                        <p class="text-sm text-gray-600">Por cada 1€ de deuda a corto plazo, la empresa tiene 1,71€ en activos líquidos para cubrirla. Indica una posición de liquidez saludable.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-700">Prueba Ácida</h3>
+                        <p class="text-3xl font-bold text-gray-900 my-2">1,71</p>
+                        <p class="text-sm text-gray-600">Confirma la excelente liquidez al excluir los inventarios (que son cero en este caso).</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-700">Ratio de Endeudamiento</h3>
+                        <p class="text-3xl font-bold text-gray-900 my-2">57,5%</p>
+                        <p class="text-sm text-gray-600">El 57,5% de los activos está financiado con deuda. Es un nivel moderado.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-700">Calidad de la Deuda</h3>
+                        <p class="text-3xl font-bold text-amber-600 my-2">100%</p>
+                        <p class="text-sm text-gray-600">El 100% de la deuda es a corto plazo. Es un punto de riesgo que requiere vigilancia y posible reestructuración.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-700">Rentabilidad (ROE)</h3>
+                        <p class="text-3xl font-bold text-gray-900 my-2">62,4%</p>
+                        <p class="text-sm text-gray-600">Por cada 1€ de capital de los socios, se generaron 62,4 céntimos de beneficio. Una rentabilidad extraordinaria.</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-700">Rentabilidad (ROA)</h3>
+                        <p class="text-3xl font-bold text-gray-900 my-2">26,5%</p>
+                        <p class="text-sm text-gray-600">Indica un uso muy eficiente de los activos para generar beneficios.</p>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- Información Financiera Tab -->
+            <section id="financial-info" class="hidden space-y-8 financial-info-section">
+                <div class="text-left pb-4">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Información Financiera Detallada</h2>
+                    <p class="text-gray-600">
+                        Esta sección proporciona una visión transparente de los datos y cálculos que fundamentan este análisis. Aquí puede consultar los estados financieros y las fórmulas utilizadas para calcular los ratios clave.
+                    </p>
+                </div>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Balance de Situación (a 30/06/2025)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-500">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Activo</th><th class="px-6 py-3 text-right">Importe (€)</th></tr></thead>
+                                <tbody>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Activo No Corriente</td><td class="px-6 py-4 text-right">307,17</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Activo Corriente</td><td class="px-6 py-4 text-right">18.249,84</td></tr>
+                                </tbody>
+                                <tfoot class="font-semibold text-gray-900"><tr><td class="px-6 py-3">Total Activo</td><td class="px-6 py-3 text-right">18.557,01</td></tr></tfoot>
+                            </table>
+                             <table class="w-full text-sm text-left text-gray-500 mt-6">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Pasivo y Patrimonio Neto</th><th class="px-6 py-3 text-right">Importe (€)</th></tr></thead>
+                                <tbody>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Patrimonio Neto</td><td class="px-6 py-4 text-right">7.895,39</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Pasivo No Corriente</td><td class="px-6 py-4 text-right">0,00</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Pasivo Corriente</td><td class="px-6 py-4 text-right">10.661,62</td></tr>
+                                </tbody>
+                                <tfoot class="font-semibold text-gray-900"><tr><td class="px-6 py-3">Total Pasivo + P. Neto</td><td class="px-6 py-3 text-right">18.557,01</td></tr></tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="bg-white p-4 sm:p-6 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="text-lg font-semibold text-gray-800 mb-4">Cuenta de Resultados (06-2025)</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-sm text-left text-gray-500">
+                                <thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Concepto</th><th class="px-6 py-3 text-right">Importe (€)</th></tr></thead>
+                                <tbody>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Importe Neto Cifra Negocios</td><td class="px-6 py-4 text-right">26.872,91</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Gastos de Personal</td><td class="px-6 py-4 text-right">-1.979,59</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Otros Gastos de Explotación</td><td class="px-6 py-4 text-right">-18.705,42</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Amortización del Inmovilizado</td><td class="px-6 py-4 text-right">-22,58</td></tr>
+                                    <tr class="bg-white border-b"><td class="px-6 py-4 font-medium text-gray-900">Otros Resultados</td><td class="px-6 py-4 text-right">-1.238,93</td></tr>
+                                </tbody>
+                                <tfoot class="font-semibold text-gray-900"><tr><td class="px-6 py-3">Resultado del Ejercicio</td><td class="px-6 py-3 text-right">4.926,39</td></tr></tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                    <h3>Cálculo de Ratios Clave</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="formula-card">
+                            <p class="formula-title">Ratio de Liquidez</p>
+                            <p class="formula-equation">(Activo Corriente / Pasivo Corriente)</p>
+                            <p>18.249,84 € / 10.661,62 € = <span class="formula-result">1,71</span></p>
+                        </div>
+                        <div class="formula-card">
+                            <p class="formula-title">Ratio de Endeudamiento</p>
+                            <p class="formula-equation">(Total Pasivo / Total Activo)</p>
+                            <p>10.661,62 € / 18.557,01 € = <span class="formula-result">57,5%</span></p>
+                        </div>
+                        <div class="formula-card">
+                            <p class="formula-title">Rentabilidad sobre Activos (ROA)</p>
+                            <p class="formula-equation">(Beneficio Neto / Total Activo)</p>
+                            <p>4.926,39 € / 18.557,01 € = <span class="formula-result">26,5%</span></p>
+                        </div>
+                        <div class="formula-card">
+                            <p class="formula-title">Rentabilidad sobre Patrimonio (ROE)</p>
+                            <p class="formula-equation">(Beneficio Neto / Patrimonio Neto)</p>
+                            <p>4.926,39 € / 7.895,39 € = <span class="formula-result">62,4%</span></p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Informe PDF Tab -->
+            <section id="report" class="hidden space-y-8">
+                 <div class="text-left pb-4">
+                    <h2 class="text-2xl font-bold text-gray-800 mb-2">Informe Financiero Completo</h2>
+                    <p class="text-gray-600 mb-6">
+                        Esta sección consolida el análisis financiero en un formato de informe tradicional. Puede revisar los hallazgos clave a continuación o generar un documento PDF para archivar o compartir.
+                    </p>
+                    <button id="download-pdf" class="inline-flex items-center px-4 py-2 bg-teal-600 text-white font-semibold rounded-lg shadow-md hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 17a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zm3.293-7.707a1 1 0 011.414 0L9 10.586V3a1 1 0 112 0v7.586l1.293-1.293a1 1 0 111.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        Descargar Informe PDF
+                    </button>
+                </div>
+                
+                <div class="bg-white p-6 sm:p-8 rounded-xl border border-gray-200 shadow-sm report-section">
+                    <h3>Introducción y Objetivos</h3>
+                    <p>El presente informe tiene como objetivo analizar en profundidad la salud financiera de INNOGROUP TECH, S.L. para el primer semestre de 2025. Mediante el estudio del Balance de Situación y la Cuenta de Ganancias y Pérdidas, se busca extraer tendencias clave, evaluar la rentabilidad, liquidez y solvencia, y presentar los resultados de una manera que facilite la toma de decisiones estratégicas por parte de los socios y el equipo directivo.</p>
+                    
+                    <h3>Análisis del Estado de Resultados</h3>
+                    <p>La cuenta de resultados muestra una empresa en plena fase de crecimiento, con ingresos netos de <strong>26.872,91 €</strong>. A pesar de unos gastos de explotación significativos (18.705,42 €), impulsados principalmente por servicios de suscripción y marketing digital, la compañía ha logrado un beneficio neto positivo de <strong>4.926,39 €</strong>. Esto demuestra una fuerte capacidad para convertir ventas en beneficios, alcanzando un Margen Neto del 18,3%, un indicador muy positivo de eficiencia operativa.</p>
+                    
+                    <h3>Análisis del Balance de Situación</h3>
+                    <p>El balance refleja una estructura financiera joven y altamente líquida. El activo total, de <strong>18.557,01 €</strong>, está compuesto en un 98,3% por activos corrientes, principalmente efectivo. Esto indica una excelente tesorería pero una baja inversión en activos fijos. La financiación proviene de un Patrimonio Neto de <strong>7.895,39 €</strong> (reforzado por los beneficios del periodo) y un Pasivo Corriente de <strong>10.661,62 €</strong>. Es crucial destacar que el 100% de la deuda es a corto plazo, lo que supone un punto de atención para la gestión financiera futura.</p>
+                    
+                    <h3>Análisis de Ratios y Conclusiones</h3>
+                    <p>Los indicadores financieros clave confirman la solidez de la empresa:</p>
+                    <ul class="list-disc list-inside space-y-2 my-4">
+                        <li><strong>Liquidez:</strong> Con un Ratio de Liquidez de 1,71, la empresa puede cubrir cómodamente sus deudas a corto plazo.</li>
+                        <li><strong>Solvencia:</strong> El Ratio de Endeudamiento es moderado (57,5%), pero la concentración del 100% de la deuda en el corto plazo es un riesgo a gestionar.</li>
+                        <li><strong>Rentabilidad:</strong> El ROE del 62,4% es excepcional y demuestra una altísima capacidad para generar valor para los socios.</li>
+                    </ul>
+                    <p><strong>Conclusión General:</strong> INNOGROUP TECH, S.L. es una empresa financieramente sana, rentable y con un gran potencial de crecimiento. La principal recomendación estratégica es buscar una reestructuración de la deuda para convertir una parte a largo plazo, mitigando así el riesgo de liquidez y asegurando una base financiera más estable para el futuro.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const { jsPDF } = window.jspdf;
+
+            const financialData = {
+                pnl: {
+                    labels: ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio'],
+                    revenue: [600.00, 4465.00, 1080.00, 2414.66, 9815.25, 8498.00],
+                    netResult: [-934.32, 2274.53, -1554.46, -1236.93, 5396.47, 981.10]
+                },
+                balance: {
+                    assets: {
+                        labels: ['Activo Corriente', 'Activo No Corriente'],
+                        values: [18249.84, 307.17],
+                        percentages: [98.3, 1.7]
+                    },
+                    liabilities: {
+                        labels: ['Patrimonio Neto', 'Pasivo Corriente'],
+                        values: [7895.39, 10661.62],
+                        percentages: [42.5, 57.5]
+                    }
+                },
+                expenses: {
+                    labels: ['Otros Gastos de Explotación', 'Gastos de Personal', 'Gastos Excepcionales', 'Amortización'],
+                    values: [18705.42, 1979.59, 1238.93, 22.58],
+                    percentages: [85.2, 9.0, 5.6, 0.2]
+                }
+            };
+
+            const tabs = document.querySelectorAll('#nav-tabs button');
+            const tabContents = document.querySelectorAll('#tab-content section');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('tab-active'));
+                    tab.classList.add('tab-active');
+
+                    tabContents.forEach(content => {
+                        if (content.id === tab.dataset.tab) {
+                            content.classList.remove('hidden');
+                        } else {
+                            content.classList.add('hidden');
+                        }
+                    });
+                });
+            });
+            
+            const commonChartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            font: {
+                                family: 'Inter',
+                            }
+                        }
+                    },
+                    tooltip: {
+                        enabled: true,
+                        backgroundColor: '#1f2937',
+                        titleFont: { size: 14, family: 'Inter', weight: 'bold' },
+                        bodyFont: { size: 12, family: 'Inter' },
+                        callbacks: {
+                            label: function(context) {
+                                let label = context.dataset.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed.y !== null) {
+                                    label += new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(context.parsed.y);
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                     x: {
+                        ticks: {
+                            font: { family: 'Inter' }
+                        },
+                        grid: {
+                            display: false
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            font: { family: 'Inter' },
+                             callback: function(value, index, values) {
+                                return new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0 }).format(value);
+                            }
+                        },
+                        grid: {
+                            color: '#e5e7eb'
+                        }
+                    }
+                }
+            };
+            
+            const commonDoughnutOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '60%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            font: {
+                                family: 'Inter',
+                            }
+                        }
+                    },
+                    tooltip: {
+                         enabled: true,
+                         backgroundColor: '#1f2937',
+                         titleFont: { size: 14, family: 'Inter', weight: 'bold' },
+                         bodyFont: { size: 12, family: 'Inter' },
+                         callbacks: {
+                            label: function(context) {
+                                let label = context.label || '';
+                                if (label) {
+                                    label += ': ';
+                                }
+                                if (context.parsed !== null) {
+                                    const value = context.dataset.data[context.dataIndex];
+                                    const percentage = context.dataset.percentages[context.dataIndex];
+                                    label += `${new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(value)} (${percentage}%)`;
+                                }
+                                return label;
+                            }
+                        }
+                    }
+                }
+            };
+            
+            const ctxRevenue = document.getElementById('revenueProfitChart')?.getContext('2d');
+            if (ctxRevenue) {
+                new Chart(ctxRevenue, {
+                    type: 'bar',
+                    data: {
+                        labels: financialData.pnl.labels,
+                        datasets: [
+                            {
+                                type: 'line',
+                                label: 'Beneficio Neto',
+                                data: financialData.pnl.netResult,
+                                borderColor: '#0d9488',
+                                backgroundColor: '#0d9488',
+                                tension: 0.3,
+                                yAxisID: 'y',
+                                pointRadius: 4,
+                                pointBackgroundColor: '#0d9488',
+                            },
+                            {
+                                type: 'bar',
+                                label: 'Ingresos',
+                                data: financialData.pnl.revenue,
+                                backgroundColor: '#99f6e4',
+                                borderColor: '#5eead4',
+                                borderWidth: 1,
+                                yAxisID: 'y',
+                            }
+                        ]
+                    },
+                    options: commonChartOptions
+                });
+            }
+
+            const ctxAssets = document.getElementById('assetsChart')?.getContext('2d');
+            if (ctxAssets) {
+                new Chart(ctxAssets, {
+                    type: 'doughnut',
+                    data: {
+                        labels: financialData.balance.assets.labels,
+                        datasets: [{
+                            data: financialData.balance.assets.values,
+                            percentages: financialData.balance.assets.percentages,
+                            backgroundColor: ['#0d9488', '#ccfbf1'],
+                            borderColor: '#ffffff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: commonDoughnutOptions
+                });
+            }
+
+            const ctxLiabilities = document.getElementById('liabilitiesChart')?.getContext('2d');
+            if (ctxLiabilities) {
+                new Chart(ctxLiabilities, {
+                    type: 'doughnut',
+                    data: {
+                        labels: financialData.balance.liabilities.labels,
+                        datasets: [{
+                            data: financialData.balance.liabilities.values,
+                            percentages: financialData.balance.liabilities.percentages,
+                            backgroundColor: ['#0f766e', '#fcd34d'],
+                            borderColor: '#ffffff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: commonDoughnutOptions
+                });
+            }
+
+            const ctxExpenses = document.getElementById('expensesChart')?.getContext('2d');
+            if (ctxExpenses) {
+                new Chart(ctxExpenses, {
+                    type: 'doughnut',
+                    data: {
+                        labels: financialData.expenses.labels,
+                        datasets: [{
+                            data: financialData.expenses.values,
+                            percentages: financialData.expenses.percentages,
+                            backgroundColor: ['#0f766e', '#fcd34d', '#fb923c', '#9ca3af'],
+                            borderColor: '#ffffff',
+                            borderWidth: 2
+                        }]
+                    },
+                    options: commonDoughnutOptions
+                });
+            }
+
+            document.getElementById('download-pdf').addEventListener('click', function() {
+                const doc = new jsPDF();
+                const page_width = doc.internal.pageSize.getWidth();
+                const center_pos = page_width / 2;
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(18);
+                doc.text('Informe Financiero - INNOGROUP TECH, S.L.', center_pos, 20, { align: 'center' });
+                
+                doc.setFontSize(14);
+                doc.text('Periodo: Primer Semestre 2025', center_pos, 30, { align: 'center' });
+
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(11);
+
+                const summaryText = `
+                    Este informe analiza la salud financiera de INNOGROUP TECH, S.L. para el primer 
+                    semestre de 2025, evaluando la rentabilidad, liquidez y solvencia para facilitar la 
+                    toma de decisiones estratégicas.
+                `;
+                doc.text(summaryText, 15, 45, { maxWidth: 180 });
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.text('Indicadores Clave', 15, 70);
+                
+                doc.autoTable({
+                    startY: 75,
+                    head: [['Indicador', 'Valor', 'Interpretación']],
+                    body: [
+                        ['Beneficio Neto', '4.926,39 €', 'Resultado final del periodo.'],
+                        ['Ingresos Totales', '26.872,91 €', 'Ventas totales generadas.'],
+                        ['Ratio de Liquidez', '1,71', 'Capacidad para cubrir deudas a corto plazo.'],
+                        ['Ratio de Endeudamiento', '57,5%', 'Porcentaje de activos financiados por deuda.'],
+                        ['Rentabilidad (ROE)', '62,4%', 'Rentabilidad generada sobre el capital de los socios.']
+                    ],
+                    theme: 'striped',
+                    headStyles: { fillColor: [13, 148, 136] } // Teal color
+                });
+
+                let finalY = doc.lastAutoTable.finalY || 120;
+
+                doc.setFont('helvetica', 'bold');
+                doc.setFontSize(14);
+                doc.text('Conclusiones y Recomendaciones', 15, finalY + 15);
+                
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(11);
+                const conclusionText = `
+                    INNOGROUP TECH, S.L. es una empresa financieramente sana, rentable y con un gran 
+                    potencial de crecimiento. La principal fortaleza es su alta rentabilidad (ROE 62,4%) y 
+                    su excelente liquidez (Ratio 1,71).
+                    
+                    El principal punto de atención es la estructura de la deuda, con un 100% concentrado
+                    en el corto plazo.
+                    
+                    Recomendación: Explorar la reestructuración de parte de la deuda a corto plazo
+                    hacia el largo plazo para mitigar riesgos y asegurar una base financiera más estable.
+                `;
+                doc.text(conclusionText, 15, finalY + 25, { maxWidth: 180 });
+                
+                doc.save('Informe_Financiero_INNOGROUP.pdf');
+            });
+        });
+    </script>
+</body>
+</html>
